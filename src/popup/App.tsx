@@ -9,10 +9,14 @@ import {
   Lock,
   Globe,
   Key,
+  ExternalLink,
 } from 'lucide-react';
 import type { ThreatLog } from '../types';
 import React, { useEffect, useState } from 'react';
 import hatLogo from '../assets/sleuth-lg.png';
+
+const DOCS_BASE_URL =
+  'https://github.com/huement/cookie_sleuth/blob/main/LOGIC.md';
 
 const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
   const scorePercent = threat.score
@@ -20,28 +24,70 @@ const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
     : 0;
 
   const reasons = [
-    { text: 'No matching user interaction', present: true },
+    {
+      text: 'No matching user interaction',
+      present: true,
+      docAnchor: '#1-tab-scoped-user-intent',
+    },
     {
       text: 'Third-party affiliate domain',
       present: threat.context === 'third-party',
+      docAnchor: '#4-first-party-vs-third-party-detection',
     },
-    { text: `Affiliate identifier: ${threat.cookieName}`, present: true },
+    {
+      text: `Affiliate identifier: ${threat.cookieName}`,
+      present: true,
+      docAnchor: '#3-affiliate-cookie-confidence-scoring',
+    },
     {
       text: `Cookie set via ${threat.deliveryMechanism}`,
       present: !!threat.deliveryMechanism,
+      docAnchor: '#5-track-how-the-cookie-was-delivered',
     },
   ];
 
   return (
-    <div className="mt-2 p-2 bg-zinc-800/60 border border-zinc-700/80 rounded-sm text-xs animate-fadeIn">
-      <p className="font-bold text-pink-400">
-        {scorePercent}% likely cookie stuffing
-      </p>
-      <ul className="list-disc list-inside mt-1 space-y-1 text-zinc-300">
+    <div
+      onClick={(e) => e.stopPropagation()} // Prevents card collapse when clicking doc links
+      className="mt-2 p-2 bg-zinc-800/60 border border-zinc-700/80 rounded-sm text-xs animate-fadeIn space-y-1.5"
+    >
+      <div className="flex items-center justify-between border-b border-zinc-700/50 pb-1">
+        <p className="font-bold text-pink-400">
+          {scorePercent}% likely cookie stuffing
+        </p>
+        <a
+          href={DOCS_BASE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
+        >
+          <span>FULL SPEC</span>
+          <ExternalLink className="w-2.5 h-2.5" />
+        </a>
+      </div>
+
+      <ul className="space-y-1 text-zinc-300 pt-0.5">
         {reasons
           .filter((r) => r.present)
           .map((r) => (
-            <li key={r.text}>{r.text}</li>
+            <li
+              key={r.text}
+              className="flex items-center justify-between group hover:bg-zinc-800/80 p-0.5 rounded transition-colors"
+            >
+              <span className="flex items-center gap-1.5 truncate pr-1">
+                <span className="w-1 h-1 rounded-full bg-pink-500 flex-shrink-0"></span>
+                <span className="truncate">{r.text}</span>
+              </span>
+              <a
+                href={`${DOCS_BASE_URL}${r.docAnchor}`}
+                target="_blank"
+                rel="noreferrer"
+                title="View documentation on GitHub"
+                className="text-zinc-500 hover:text-cyan-300 transition-colors p-0.5 flex-shrink-0"
+              >
+                <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+              </a>
+            </li>
           ))}
       </ul>
     </div>
@@ -377,11 +423,20 @@ export const App = () => {
           href="https://github.com/huement/"
           target="_blank"
           rel="noreferrer"
-          className="hover:text-cyan-400 transition-colors flex items-center gap-1"
+          className="text-cyan-600 hover:text-cyan-300 transition-colors flex items-center gap-1"
         >
-          <span>DOCS // SCORING RULES ↗</span>
+          <span>
+            <Globe className="w-3 h-3 inline"></Globe> SCORING RULES
+          </span>
         </a>
-        <span>MV3 ENGINE</span>
+        <a
+          href="https://github.com/huement/"
+          target="_blank"
+          rel="noreferrer"
+          className="text-cyan-600 hover:text-cyan-300 transition-colors flex items-center gap-1"
+        >
+          <span>HUEMENT.COM</span>
+        </a>
       </div>
     </div>
   );

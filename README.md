@@ -1,5 +1,7 @@
 # COOKIE SLEUTH // Cookie Stuffing Guard
 
+![Cookie Sleuth Logo](./src/assets/full_logo.png)
+
 A Manifest V3 Chrome Extension powered by React, TypeScript, and Tailwind CSS v4 that monitors browser cookie assignments to detect and audit cookie stuffing attacks in real time.
 
 ## Development Quickstart
