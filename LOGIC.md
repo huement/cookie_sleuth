@@ -1,177 +1,86 @@
-# Cookie Sleuth — Features to Make Detection Smarter
+# Cookie Sleuth
 
-## 1. Tab-Scoped User Intent
+## Features & Detection Roadmap
 
-**What it means:**  
-Track user intent separately for each browser tab instead of keeping one global pool of recent clicks.
+<p align="center">
+  <img src="./src/assets/sleuth-lg.png" alt="Cookie Sleuth Logo">
+</p>
 
-**Why it's important:**  
-A click in one tab shouldn't accidentally make an unrelated cookie event in another tab appear legitimate.
+## INITIAL FEATURE LIST
 
-**Suggested fix:**  
-Associate every intent event with the tab ID and only correlate cookies/requests against intent from that same tab.
+### 1| Tab-Scoped User Intent — ✅ [COMPLETED]
 
----
+- **Status:** Implemented in index.ts and content scripts.
+- **Implementation:** intentCache associates user clicks directly with sender.tab.id. Threat evaluation matches tabId strictly so actions in Tab A never authorize background cookies in Tab B.
 
-## 2. Richer User Intent
+###⠀2| Richer User Intent — ✅ [COMPLETED]
 
-**What it means:**  
-Don't just record that "the user clicked something." Record what they interacted with and where it was going.
+- **Status:** Implemented in content scripts and service worker.
+- **Implementation:** Intent registration captures targetUrl, targetDomain, timestamp, tabId, sourceUrl, and interaction type.
 
-**Why it's important:**  
-A click on an actual affiliate link is much stronger evidence of legitimate attribution than an unrelated click somewhere on the page.
+###⠀3| Affiliate Cookie Confidence Scoring — ✅ [COMPLETED]
 
-**Suggested fix:**  
-Capture the source page, target URL, interaction type, timestamp, and relevant element information as part of the intent event.
+- **Status:** Implemented in index.ts.
+- **Implementation:** Replaced binary regex with AFFILIATE_COOKIE_MARKERS ($10, 9, 7, 5, 3$ points based on pattern specificity).
 
----
+###⠀4| First-Party vs. Third-Party Detection — ✅ [COMPLETED]
 
-## 3. Affiliate Cookie Confidence Scoring
+- **Status:** Implemented in index.ts.
+- **Implementation:** Dynamically compares cookie domain against active tab URL or details.initiator. Adds $+5$ penalty score and reason tag for third-party attributions.
 
-**What it means:**  
-Stop treating every cookie with a suspicious-looking name as an affiliate cookie.
+###⠀5| Track How the Cookie Was Delivered — ✅ [COMPLETED]
 
-**Why it's important:**  
-Names like `tag`, `ref`, or `partner` are generic and can create false positives. Some names are much stronger indicators of affiliate tracking than others.
+- **Status:** Implemented in index.ts.
+- **Implementation:** Distinguishes between sub_frame (iframes), xmlhttprequest, script, and http_header drops with custom risk scores.
 
-**Suggested fix:**  
-Give different cookie names and patterns different confidence weights rather than using a simple yes/no regex match.
+###⠀6| Navigation & Request Correlation — ✅ [COMPLETED]
 
----
+- **Status:** Implemented in webRequest listeners.
+- **Implementation:** Reads HTTP $301/302/303/307/308$ response status codes. Flags mid-flight redirect hops ($+5$ score penalty) and reduces intent discounts during redirect chains.
 
-## 4. First-Party vs. Third-Party Detection
+###⠀7| Negative Evidence — ✅ [COMPLETED]
 
-**What it means:**  
-Determine whether the cookie belongs to the website the user is currently visiting or to an outside domain.
+- **Status:** Implemented in index.ts.
+- **Implementation:** Evaluates missing intent, subframe delivery, and third-party status. Penalizes attribution attempts occurring without user click interaction.
 
-**Why it's important:**  
-A first-party session cookie is very different from an affiliate cookie being established by an unrelated third-party domain.
+###⠀8| Affiliate Network Intelligence — ✅ [COMPLETED]
 
-**Suggested fix:**  
-Compare the cookie's domain against the active page/site context and classify the relationship as first-party, third-party, or cross-site.
+- **Status:** Implemented in index.ts.
+- **Implementation:** Added pattern matching for major affiliate networks (CJ, Impact, ShareASale, Awin, FlexOffers, Rakuten, Skimlinks, VigLink, ClickBank) and tracking URL parameters ($+10$ and $+8$ score penalties).
 
----
+###⠀9| Threat/Risk Scoring — ✅ [COMPLETED]
 
-## 5. Track How the Cookie Was Delivered
+- **Status:** Implemented in index.ts and App.tsx.
+- **Implementation:** Calculates cumulative weighted score against CONFIDENCE_THRESHOLD ($5$). Normalizes score into $0\text{--}100\%$ threat probability in the UI.
 
-**What it means:**  
-Don't only record that a cookie appeared. Try to determine what browser activity surrounded it.
+###⠀10| Explainable Detection & Deep Linking — ✅ [COMPLETED]
 
-**Why it's important:**  
-Cookie stuffing often involves mechanisms such as hidden iframes, tracking pixels, redirects, or automatically triggered requests rather than an obvious user navigation.
+- **Status:** Implemented in index.ts and App.tsx.
+- **Implementation:** Threat objects persist specific array of triggered reasons. Popup UI displays reasons with direct deep-links to documentation sections in this repository.
 
-**Suggested fix:**  
-Correlate cookie events with nearby navigation and network activity and record the apparent delivery mechanism.
+##⠀IMMEDIATE ITEMS TO DO
 
----
+### Phase 1 Core Checklist
 
-## 6. Navigation and Request Correlation
+- [x] **1. Tab-scoped intent** — Fixed & validated.
+- [x] **2. Affiliate confidence scoring** — Weighted signals active.
+- [x] **3. First-party vs third-party context** — Dynamic domain matching active.
+- [x] **4. Request/navigation correlation** — HTTP 302 redirect & subframe tracking active.
+- [x] **5. Explainable threat score** — Dynamic reason breakdown with GitHub doc links active.
 
-**What it means:**  
-Connect the user's action, navigation, network request, redirect, and eventual cookie creation into one chain of events.
+##⠀NEXT PHASE ROADMAP (Phase 2 Ideas)
 
-**Why it's important:**  
-A cookie created immediately after the user intentionally follows an affiliate link looks very different from one created without any corresponding navigation.
+###⠀1| Auto-Quarantine / Cookie Auto-Delete Toggle
 
-**Suggested fix:**  
-Build a short-lived event timeline for each tab and look for relationships between user intent, navigation, requests, redirects, and cookie changes.
+- **Status:** Planned for Phase 2.
+- **Implementation:** Add a user toggle setting to automatically delete cookies immediately if threat score exceeds $80\%$ ($18+$ points).
 
----
+###⠀2| Domain Whitelist / Allowlist
 
-## 7. Negative Evidence
+- **Status:** Planned for Phase 2.
+- **Implementation:** Allow users to whitelist specific trusted domains or affiliate networks directly from the popup UI.
 
-**What it means:**  
-Look for evidence that an affiliate attribution happened without anything the user did that would explain it.
+###⠀3| Granular Event Timeline View
 
-**Why it's important:**  
-"No user interaction + third-party affiliate request + affiliate cookie" is much stronger evidence than simply "affiliate cookie detected."
-
-**Suggested fix:**  
-Increase the suspicion score when attribution occurs without a matching click, navigation, visible interaction, or other plausible user action.
-
----
-
-## 8. Affiliate Network Intelligence
-
-**What it means:**  
-Recognize domains and URL patterns associated with affiliate networks and tracking systems.
-
-**Why it's important:**  
-Knowing that a request came from a recognized affiliate ecosystem gives the detector much more context than analyzing cookie names alone.
-
-**Suggested fix:**  
-Maintain a local intelligence database of known affiliate networks, domains, URL patterns, and common tracking indicators. Treat this as supporting evidence rather than automatically labeling something malicious.
-
----
-
-## 9. Threat/Risk Scoring
-
-**What it means:**  
-Replace the current binary "stuffing / not stuffing" decision with a confidence or risk score.
-
-**Why it's important:**  
-Cookie attribution isn't always black and white. A scoring system lets you combine several weak or strong signals and greatly reduce false positives.
-
-**Suggested fix:**  
-Assign positive and negative weights to signals such as user intent, third-party status, affiliate-network involvement, hidden frames, redirects, suspicious cookie names, and repeated attribution attempts.
-
----
-
-## 10. Explainable Detection / Event Timeline
-
-**What it means:**  
-Instead of simply telling the user that something was detected, show them why the extension thinks it is suspicious.
-
-**Why it's important:**  
-The user needs to be able to distinguish between "this cookie exists" and "this cookie appears to have been set without a legitimate user action." It also makes the extension feel like a forensic tool rather than a blacklist.
-
-**Suggested fix:**  
-Store the evidence behind each detection and present a short timeline such as: "No matching user interaction → third-party request → affiliate tracking parameter → cookie created 43ms later."
-
----
-
-# The Overall Goal
-
-The extension currently asks:
-
-> "Did an affiliate-looking cookie appear, and did the user recently interact with that domain?"
-
-The smarter version should ask:
-
-> "What happened immediately before this attribution cookie was created, and is there convincing evidence that the user actually intended to generate this attribution?"
-
-That distinction is the key.
-
-The existing `REGISTER_USER_INTENT` system is already a good foundation. The biggest architectural improvement is to turn it from a simple 4-second "did they click?" check into a short-lived, tab-scoped event history that can be correlated with navigation, requests, redirects, and cookie creation. Your current implementation already has the intent cache and expiration mechanism to build on. :contentReference[oaicite:0]{index=0}
-
-# IMMEDIATE ITEMS TO DO
-
-If this were my extension, my next 5 features would be
-
-1. Tab-scoped intent
-   Fix this before anything else.
-
-2. Affiliate confidence scoring
-   Replace the current regex boolean with weighted signals.
-
-3. First-party vs third-party context
-   This will eliminate a lot of false positives.
-
-4. Request/navigation correlation
-   Determine whether the cookie came through an actual user-driven navigation, an iframe, redirect, pixel, etc.
-
-5. Explainable threat score
-   Don't just say STUFFING DETECTED. Tell the user why.
-
-For example:
-
-82% likely cookie stuffing
-
-No matching user interaction
-Third-party affiliate domain
-Affiliate identifier detected
-Cookie set 43ms after hidden-frame request
-
-That would turn Cookie Sleuth from a "cookie name watcher" into something that actually has an argument for why an attribution event looks fraudulent.
-
-And your existing code is already surprisingly close to the right foundation—the REGISTER_USER_INTENT + short-lived intent cache is exactly the piece I'd keep, just make it tab-aware, richer, and one component of a larger correlation model.
+- **Status:** Planned for Phase 2.
+- **Implementation:** Record exact millisecond event timestamps ([10:42:01.002] Click Registered $\rightarrow$ [10:42:01.014] 302 Redirect Hop $\rightarrow$ [10:42:01.043] Cookie Dropped) for deep forensic inspection.

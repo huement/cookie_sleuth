@@ -16,7 +16,7 @@ import React, { useEffect, useState } from 'react';
 import hatLogo from '../assets/sleuth-lg.png';
 
 const DOCS_BASE_URL =
-  'https://github.com/huement/cookie_sleuth/blob/main/LOGIC.md';
+  'https://github.com/huement/cookie_sleuth/blob/main/THREATS.md';
 
 const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
   const scorePercent = threat.score
@@ -420,7 +420,7 @@ export const App = () => {
       {/* FOOTER BAR */}
       <div className="border-t border-cyan-500/20 pt-2 flex items-center justify-between text-[9px] text-zinc-500 uppercase tracking-widest">
         <a
-          href="https://github.com/huement/"
+          href="https://github.com/huement/cookie_sleuth/blob/main/THREATS.md"
           target="_blank"
           rel="noreferrer"
           className="text-cyan-600 hover:text-cyan-300 transition-colors flex items-center gap-1"
@@ -430,7 +430,7 @@ export const App = () => {
           </span>
         </a>
         <a
-          href="https://github.com/huement/"
+          href="https://huement.com/"
           target="_blank"
           rel="noreferrer"
           className="text-cyan-600 hover:text-cyan-300 transition-colors flex items-center gap-1"

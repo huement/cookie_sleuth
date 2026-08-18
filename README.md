@@ -1,4 +1,8 @@
-# COOKIE SLEUTH // Cookie Stuffing Guard
+<p align="center">
+  <img src="./src/assets/wordmark.png" alt="Cookie Sleuth Logo">
+</p>
+
+# Cookie Stuffing Guard
 
 ![Cookie Sleuth Logo](./src/assets/full_logo.png)
 

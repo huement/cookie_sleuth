@@ -149,3 +149,4 @@ vite.config.ts.timestamp-*
 dist/
 *.local
 .crx
+src/.DS_Store
