@@ -1,17 +1,17 @@
 {
-  "name": "aegis-stuff-guard",
-  "version": "1.0.0",
-  "description": "",
+  "name": "@huement/cookie-sleuth",
+  "version": "0.3.0",
+  "description": "Real-time cookie stuffing and affiliate fraud detective.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest",
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
   "keywords": [],
-  "author": "",
+  "author": "Huement.com",
   "license": "MPL-2.0",
   "packageManager": "pnpm@10.33.2",
   "dependencies": {
@@ -30,11 +30,13 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
     "globals": "^17.11.0",
+    "happy-dom": "^20.11.2",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
     "terser": "^5.50.0",
     "typescript": "^7.0.2",
-    "vite": "^8.2.1"
+    "vite": "^8.2.1",
+    "vitest": "^4.1.11"
   },
   "type": "module"
 }

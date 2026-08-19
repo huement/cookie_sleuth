@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { crx } from '@crxjs/vite-plugin';
@@ -9,5 +10,9 @@ export default defineConfig({
   build: {
     minify: 'terser',
     cssMinify: true,
+  },
+  test: {
+    globals: true,
+    environment: 'happy-dom',
   },
 });
