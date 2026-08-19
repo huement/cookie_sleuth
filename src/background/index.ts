@@ -1,4 +1,8 @@
 import type { UserIntent, ThreatLog } from '../types';
+import {
+  AFFILIATE_COOKIE_MARKERS,
+  KNOWN_AFFILIATE_NETWORKS,
+} from '../constants/affiliate';
 
 const INTENT_EXPIRY_MS = 4000;
 let intentCache: UserIntent[] = [];
@@ -11,31 +15,12 @@ const pruneIntents = () => {
   );
 };
 
-// 1. Affiliate Cookie Name Fingerprints
-const AFFILIATE_COOKIE_MARKERS = [
-  { pattern: /aff_id|affid/i, score: 10, label: 'Affiliate ID parameter' },
-  { pattern: /clickid|cj_data/i, score: 9, label: 'Click tracking identifier' },
-  { pattern: /partner/i, score: 7, label: 'Partner tracking marker' },
-  { pattern: /tag/i, score: 5, label: 'Generic tag parameter' },
-  { pattern: /ref/i, score: 3, label: 'Referral marker' },
-];
+// Affiliate Cookie Name Fingerprints and Network Markers
+// Are Loaded From Constants.
 
-// 2. Affiliate Network Intelligence Database
-const KNOWN_AFFILIATE_NETWORKS = [
-  { pattern: /anrdoezrs\.net|cj\.com/i, name: 'Commission Junction (CJ)' },
-  { pattern: /impact\.com|impactradius/i, name: 'Impact' },
-  { pattern: /shareasale\.com/i, name: 'ShareASale' },
-  { pattern: /awin1\.com|awin/i, name: 'Awin' },
-  { pattern: /flexoffers\.com/i, name: 'FlexOffers' },
-  { pattern: /linksynergy\.com|rakuten/i, name: 'Rakuten Advertising' },
-  { pattern: /skimlinks\.com/i, name: 'Skimlinks' },
-  { pattern: /viglink\.com/i, name: 'VigLink' },
-  { pattern: /clickbank\.net/i, name: 'ClickBank' },
-];
-
-// 3. Affiliate URL Query Parameters
+// Affiliate URL Query Parameters
 const AFFILIATE_URL_PARAMS =
-  /[?&](aff_id|affid|clickid|ref|partner|tag|cj_data|subid)=/i;
+  /[?&](aff(?:iliate)?[_-]?id|affid|click[_-]?id|cj[_-]?data|irclickid|sub[_-]?id|sid|partner[_-]?id|pid|campaign[_-]?id|cid|ref(?:errer|id)?|tag|source|utm_source|utm_medium|utm_campaign|awc|ranMID|ranEAID|tduid|phg)=/i;
 
 const CONFIDENCE_THRESHOLD = 5;
 

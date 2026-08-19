@@ -3,6 +3,7 @@ import {
   Terminal,
   Trash2,
   Cookie,
+  Users,
   Binary,
   Search,
   RefreshCw,
@@ -14,6 +15,10 @@ import {
 import type { ThreatLog } from '../types';
 import React, { useEffect, useState } from 'react';
 import hatLogo from '../assets/sleuth-lg.png';
+import {
+  AFFILIATE_COOKIE_MARKERS,
+  KNOWN_AFFILIATE_NETWORKS,
+} from '../constants/affiliate';
 
 const DOCS_BASE_URL =
   'https://github.com/huement/cookie_sleuth/blob/main/THREATS.md';
@@ -22,6 +27,21 @@ const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
   const scorePercent = threat.score
     ? Math.min(Math.round((threat.score / 25) * 100), 100)
     : 0;
+
+  const getScoreColorClass = (score: number) => {
+    if (score >= 81) return 'text-red-500 animate-pulse';
+    if (score >= 61) return 'text-orange-400';
+    if (score >= 41) return 'text-yellow-400';
+    return 'text-white';
+  };
+
+  const getScoreLabel = (score: number) => {
+    if (score >= 81) return 'VERY LIKELY cookie stuffing';
+    if (score >= 61) return 'LIKELY cookie stuffing';
+    if (score >= 41) return 'POTENTIALLY cookie stuffing';
+    if (score >= 31) return 'possibly cookie stuffing';
+    return 'no clear cookie stuffing';
+  };
 
   const reasons = [
     {
@@ -52,8 +72,8 @@ const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
       className="mt-2 p-2 bg-zinc-800/60 border border-zinc-700/80 rounded-sm text-xs animate-fadeIn space-y-1.5"
     >
       <div className="flex items-center justify-between border-b border-zinc-700/50 pb-1">
-        <p className="font-bold text-pink-400">
-          {scorePercent}% likely cookie stuffing
+        <p className={`font-bold ${getScoreColorClass(scorePercent)}`}>
+          {scorePercent}% {getScoreLabel(scorePercent)}
         </p>
         <a
           href={DOCS_BASE_URL}
@@ -95,7 +115,9 @@ const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
 };
 
 export const App = () => {
-  const [activeTab, setActiveTab] = useState<'threats' | 'cookies'>('threats');
+  const [activeTab, setActiveTab] = useState<
+    'threats' | 'cookies' | 'affiliates'
+  >('threats');
   const [threats, setThreats] = useState<ThreatLog[]>([]);
   const [totalIntercepts, setTotalIntercepts] = useState<number>(0);
   const [selectedThreatId, setSelectedThreatId] = useState<string | null>(null);
@@ -104,6 +126,14 @@ export const App = () => {
   const [rawCookies, setRawCookies] = useState<chrome.cookies.Cookie[]>([]);
   const [cookieSearch, setCookieSearch] = useState('');
   const [isLoadingCookies, setIsLoadingCookies] = useState(false);
+
+  // Affiliate Viewer State
+  const [affiliateCookies, setAffiliateCookies] = useState<
+    chrome.cookies.Cookie[]
+  >([]);
+  const [affiliateSearch, setAffiliateSearch] = useState('');
+  const [isLoadingAffiliateCookies, setIsLoadingAffiliateCookies] =
+    useState(false);
 
   // Load Threats & Storage Listeners
   useEffect(() => {
@@ -145,9 +175,46 @@ export const App = () => {
     });
   };
 
+  const fetchAffiliateCookies = () => {
+    if (typeof chrome === 'undefined' || !chrome.cookies) return;
+    setIsLoadingAffiliateCookies(true);
+
+    chrome.cookies.getAll({}, (cookies) => {
+      const affiliateCookies = (cookies || []).filter((cookie) => {
+        // 1. Check if the cookie name matches an affiliate parameter fingerprint
+        const matchesMarker = AFFILIATE_COOKIE_MARKERS.some((marker) =>
+          marker.pattern.test(cookie.name)
+        );
+
+        // 2. Check if the domain matches a known affiliate tracking network
+        const matchesNetwork = KNOWN_AFFILIATE_NETWORKS.some((network) =>
+          network.pattern.test(cookie.domain)
+        );
+
+        return matchesMarker || matchesNetwork;
+      });
+
+      // Update State with Filtered Cookies
+      setAffiliateCookies(affiliateCookies);
+      setIsLoadingAffiliateCookies(false);
+    });
+  };
+
+  const uniqueNetworksCount = new Set(
+    affiliateCookies.map((c) => {
+      const matchedNetwork = KNOWN_AFFILIATE_NETWORKS.find((n) =>
+        n.pattern.test(c.domain)
+      );
+      return matchedNetwork ? matchedNetwork.name : c.domain.replace(/^\./, '');
+    })
+  ).size;
+
   useEffect(() => {
     if (activeTab === 'cookies') {
       fetchLiveCookies();
+    }
+    if (activeTab === 'affiliates') {
+      fetchAffiliateCookies();
     }
   }, [activeTab]);
 
@@ -194,10 +261,18 @@ export const App = () => {
               COOKIE SLEUTH
             </h1>
           </div>
-          <div className="flex items-center gap-1.5 bg-emerald-950/80 border border-emerald-500/50 px-2 py-0.5 rounded text-[10px] text-emerald-400 tracking-widest uppercase">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-            ACTIVE
-          </div>
+          {/* DYNAMIC HEADER STATUS BADGE */}
+          {isLoadingCookies || isLoadingAffiliateCookies ? (
+            <div className="flex items-center gap-1.5 bg-cyan-950/80 border border-cyan-500/50 px-2 py-0.5 rounded text-[10px] text-cyan-400 tracking-widest uppercase animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+              LOADING
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-emerald-950/80 border border-emerald-500/50 px-2 py-0.5 rounded text-[10px] text-emerald-400 tracking-widest uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              ACTIVE
+            </div>
+          )}
         </div>
 
         {/* CYBERPUNK TAB NAVIGATION */}
@@ -206,8 +281,10 @@ export const App = () => {
           <div
             className={`absolute top-1 bottom-1 transition-all duration-300 rounded bg-cyan-500/20 border border-cyan-400/50 shadow-[0_0_10px_rgba(0,240,255,0.2)] ${
               activeTab === 'threats'
-                ? 'left-1 w-[calc(50%-4px)]'
-                : 'left-[calc(50%+2px)] w-[calc(50%-4px)]'
+                ? 'left-1 w-[calc(33.33%-4px)]'
+                : activeTab === 'affiliates'
+                  ? 'left-[calc(33.33%+1px)] w-[calc(33.33%-4px)]'
+                  : 'left-[calc(66.66%+1px)] w-[calc(33.33%-4px)]'
             }`}
           />
 
@@ -220,12 +297,24 @@ export const App = () => {
             }`}
           >
             <ShieldAlert className="w-3.5 h-3.5" />
-            <span>THREAT STREAM</span>
+            <span>THREATS</span>
             {threats.length > 0 && (
               <span className="px-1.5 py-0.2 bg-pink-500/30 text-pink-400 rounded-full text-[9px] font-bold border border-pink-500/40">
                 {threats.length}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('affiliates')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 z-10 transition-colors font-bold ${
+              activeTab === 'affiliates'
+                ? 'text-cyan-300'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>AFFILIATE</span>
           </button>
 
           <button
@@ -237,7 +326,7 @@ export const App = () => {
             }`}
           >
             <Binary className="w-3.5 h-3.5" />
-            <span>COOKIE MATRIX</span>
+            <span>ALL COOKIES</span>
           </button>
         </div>
 
@@ -328,6 +417,116 @@ export const App = () => {
         )}
 
         {/* TAB 2: LIVE COOKIE MATRIX */}
+        {activeTab === 'affiliates' && (
+          <div className="transition-all duration-300 opacity-100 space-y-2">
+            {/* Search and Refresh Controls */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center bg-zinc-900/90 border border-cyan-500/30 rounded px-2 py-1 gap-1.5 text-xs">
+                <Search className="w-3.5 h-3.5 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="FILTER DOMAIN / NAME..."
+                  value={affiliateSearch}
+                  onChange={(e) => setAffiliateSearch(e.target.value)}
+                  className="bg-transparent border-none text-cyan-300 placeholder-zinc-600 focus:outline-none w-full text-xs"
+                />
+              </div>
+              <button
+                onClick={fetchAffiliateCookies}
+                className="bg-zinc-900 border border-cyan-500/30 hover:border-cyan-400 p-1.5 rounded text-cyan-400 hover:text-cyan-300 transition-colors"
+                title="Refresh Cookie Feed"
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 ${
+                    isLoadingAffiliateCookies
+                      ? 'animate-spin text-pink-500'
+                      : ''
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="bg-zinc-900/80 border border-cyan-500/20 p-2.5 rounded shadow-inner">
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
+                  Active Affiliates
+                </p>
+                <p className="text-xl font-bold text-pink-500 drop-shadow-[0_0_8px_#ff007f]">
+                  {affiliateCookies.length.toString().padStart(4, '0')}
+                </p>
+              </div>
+              <div className="bg-zinc-900/80 border border-cyan-500/20 p-2.5 rounded shadow-inner">
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
+                  Unique Networks
+                </p>
+                <p className="text-xl font-bold text-cyan-300 drop-shadow-[0_0_8px_#00f0ff]">
+                  {uniqueNetworksCount.toString().padStart(2, '0')}
+                </p>
+              </div>
+            </div>
+
+            {/* Cookies Live Feed List */}
+            <div className="h-[230px] overflow-y-auto space-y-1.5 pr-1 scrollbar-thin scrollbar-thumb-cyan-500/40">
+              {affiliateCookies.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-zinc-600 text-xs">
+                  NO ACTIVE AFFILIATE COOKIES
+                </div>
+              ) : (
+                affiliateCookies.map((cookie, index) => (
+                  <div
+                    key={`${cookie.domain}-${cookie.name}-${index}`}
+                    className="bg-zinc-900/80 border border-zinc-800 hover:border-cyan-500/40 p-2 rounded text-[11px] space-y-1 transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-cyan-300 truncate max-w-[210px] flex items-center gap-1">
+                        <Key className="w-3 h-3 text-pink-500 flex-shrink-0" />
+                        {cookie.name}
+                      </span>
+                      <button
+                        onClick={() => deleteSingleCookie(cookie)}
+                        title="Delete Cookie"
+                        className="text-zinc-600 hover:text-pink-500 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-[10px] text-zinc-400 truncate">
+                      <Globe className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+                      <span>{cookie.domain}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[9px] pt-0.5">
+                      <span className="text-zinc-500 truncate max-w-[200px]">
+                        VAL: {cookie.value}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {cookie.secure && (
+                          <span
+                            className="bg-cyan-950 text-cyan-400 px-1 py-0.2 rounded border border-cyan-800"
+                            title="HTTPS Secure"
+                          >
+                            <Lock className="w-2.5 h-2.5 inline" /> SEC
+                          </span>
+                        )}
+                        {cookie.httpOnly && (
+                          <span
+                            className="bg-pink-950 text-pink-400 px-1 py-0.2 rounded border border-pink-800"
+                            title="HTTP Only"
+                          >
+                            HTTP
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: LIVE COOKIE MATRIX */}
         {activeTab === 'cookies' && (
           <div className="transition-all duration-300 opacity-100 space-y-2">
             {/* Search and Refresh Controls */}
