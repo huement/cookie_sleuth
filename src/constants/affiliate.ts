@@ -1,3 +1,101 @@
+// Known major web infrastructure and platforms that generate high background asset traffic
+export const KNOWN_LEGITIMATE_INFRASTRUCTURE = new Set([
+  'google.com',
+  'youtube.com',
+  'googlevideo.com',
+  'gstatic.com',
+  'googleapis.com',
+  'googleusercontent.com',
+  'gmail.com',
+  'microsoft.com',
+  'live.com',
+  'office.com',
+  'azure.com',
+  'facebook.com',
+  'instagram.com',
+  'meta.com',
+  'apple.com',
+  'icloud.com',
+  'cloudflare.com',
+  'fastly.net',
+  'akamai.net',
+  'akamaized.net',
+  'github.com',
+  'amazon.com',
+  'amazonaws.com',
+  'cloudfront.net',
+]);
+
+export const isLegitimateInfrastructureDomain = (domain: string): boolean => {
+  const clean = domain
+    .replace(/^\./, '')
+    .replace(/^www\./, '')
+    .toLowerCase();
+  if (KNOWN_LEGITIMATE_INFRASTRUCTURE.has(clean)) return true;
+
+  for (const infra of KNOWN_LEGITIMATE_INFRASTRUCTURE) {
+    if (clean.endsWith('.' + infra)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// Programmatic ad-tech, DSPs, and cookie-sync platforms
+export const ADTECH_DOMAINS = new Set([
+  // DSPs & SSPs
+  'adsrvr.org', // The Trade Desk
+  'rubiconproject.com', // Magnite / Rubicon
+  'pubmatic.com', // PubMatic
+  'onetag-sys.com', // OneTag
+  'smartadserver.com', // Smart AdServer
+  'contextweb.com', // PulsePoint
+  'yieldmo.com', // Yieldmo
+  'undertone.com', // Undertone
+  'media.net', // Media.net
+  'lijit.com', // Sovrn / Lijit
+  'adnxs.com', // AppNexus / Xandr
+  'amazon-adsystem.com', // Amazon Display Ads
+  'mookie1.com', // Oracle / Moat
+  'mediavine.com', // Mediavine
+
+  // Identity Resolution & Data Brokers
+  'tapad.com', // Tapad
+  'pippio.com', // LiveRamp
+  'agkn.com', // Neustar / TransUnion
+  'mediawallahscript.com',
+
+  // Google Ad Infrastructure (Display / Search Ads)
+  'doubleclick.net',
+  'googleadservices.com',
+  'googlesyndication.com',
+
+  // Social Pixels & Widgets
+  'snapchat.com',
+  'linkedin.com',
+  'taboola.com',
+  'disqus.com',
+  'affirm.com',
+  'bing.com',
+  'yahoo.com',
+]);
+
+// Helper to check exact domain or apex subdomains (e.g. sync.tapad.com -> tapad.com)
+export const isAdTechDomain = (domain: string): boolean => {
+  const clean = domain
+    .replace(/^\./, '')
+    .replace(/^www\./, '')
+    .toLowerCase();
+  if (ADTECH_DOMAINS.has(clean)) return true;
+
+  for (const adtech of ADTECH_DOMAINS) {
+    if (clean.endsWith('.' + adtech)) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export const AFFILIATE_COOKIE_MARKERS = [
   // High confidence
   {

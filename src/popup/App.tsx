@@ -11,6 +11,9 @@ import {
   Globe,
   Key,
   ExternalLink,
+  BarChart3,
+  Activity,
+  Compass,
 } from 'lucide-react';
 import type { ThreatLog } from '../types';
 import React, { useEffect, useState } from 'react';
@@ -24,8 +27,11 @@ const DOCS_BASE_URL =
   'https://github.com/huement/cookie_sleuth/blob/main/THREATS.md';
 
 const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
+  // Gracefully handles normalized 0-100 scores or float 0.0-1.0 scores
   const scorePercent = threat.score
-    ? Math.min(Math.round((threat.score / 25) * 100), 100)
+    ? threat.score > 1
+      ? Math.min(Math.round(threat.score), 100)
+      : Math.round(threat.score * 100)
     : 0;
 
   const getScoreColorClass = (score: number) => {
@@ -122,6 +128,11 @@ export const App = () => {
   const [totalIntercepts, setTotalIntercepts] = useState<number>(0);
   const [selectedThreatId, setSelectedThreatId] = useState<string | null>(null);
 
+  // New Analytics & View Toggle State
+  const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
+  const [lzNoveltyRate, setLzNoveltyRate] = useState<number>(0);
+  const [navDictSize, setNavDictSize] = useState<number>(0);
+
   // Cookie Viewer State
   const [rawCookies, setRawCookies] = useState<chrome.cookies.Cookie[]>([]);
   const [cookieSearch, setCookieSearch] = useState('');
@@ -144,20 +155,27 @@ export const App = () => {
       return;
     }
 
-    chrome.storage.local.get(['threats', 'threatCount'], (res) => {
-      setThreats((res.threats as ThreatLog[]) || []);
-      setTotalIntercepts((res.threatCount as number) || 0);
-    });
+    chrome.storage.local.get(
+      ['threats', 'threatCount', 'lzNoveltyRate', 'navDictSize'],
+      (res) => {
+        setThreats((res.threats as ThreatLog[]) || []);
+        setTotalIntercepts((res.threatCount as number) || 0);
+        setLzNoveltyRate((res.lzNoveltyRate as number) || 0);
+        setNavDictSize((res.navDictSize as number) || 0);
+      }
+    );
 
     const handleStorageChange = (changes: {
       [key: string]: chrome.storage.StorageChange;
     }) => {
-      if (changes.threats) {
+      if (changes.threats)
         setThreats((changes.threats.newValue as ThreatLog[]) || []);
-      }
-      if (changes.threatCount) {
+      if (changes.threatCount)
         setTotalIntercepts((changes.threatCount.newValue as number) || 0);
-      }
+      if (changes.lzNoveltyRate)
+        setLzNoveltyRate((changes.lzNoveltyRate.newValue as number) || 0);
+      if (changes.navDictSize)
+        setNavDictSize((changes.navDictSize.newValue as number) || 0);
     };
 
     chrome.storage.onChanged.addListener(handleStorageChange);
@@ -250,6 +268,18 @@ export const App = () => {
       c.domain.toLowerCase().includes(cookieSearch.toLowerCase())
   );
 
+  // Compute threat distribution buckets for the sparkline graph
+  const highThreats = threats.filter(
+    (t) => t.score !== undefined && t.score >= 80
+  ).length;
+  const medThreats = threats.filter(
+    (t) => t.score !== undefined && t.score >= 50 && t.score < 80
+  ).length;
+  const lowThreats = threats.filter(
+    (t) => t.score !== undefined && t.score < 50
+  ).length;
+  const maxThreatBucket = Math.max(highThreats, medThreats, lowThreats, 1);
+
   return (
     <div className="w-[380px] h-[520px] bg-zinc-950 text-cyan-400 font-mono p-4 flex flex-col justify-between select-none border-2 border-cyan-500/30 shadow-[0_0_20px_rgba(0,240,255,0.15)] relative overflow-hidden">
       {/* HEADER BAR */}
@@ -290,10 +320,8 @@ export const App = () => {
 
           <button
             onClick={() => setActiveTab('threats')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 z-10 transition-colors font-bold ${
-              activeTab === 'threats'
-                ? 'text-cyan-300'
-                : 'text-zinc-500 hover:text-zinc-300'
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 z-10 font-bold ${
+              activeTab === 'threats' ? 'text-cyan-300' : 'text-zinc-500'
             }`}
           >
             <ShieldAlert className="w-3.5 h-3.5" />
@@ -331,48 +359,167 @@ export const App = () => {
         </div>
 
         {/* TAB 1: THREAT STREAM */}
+        {/* TAB 1: THREAT STREAM & TOGGLEABLE GRAPH PANEL */}
         {activeTab === 'threats' && (
           <div className="transition-all duration-300 opacity-100">
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div className="bg-zinc-900/80 border border-cyan-500/20 p-2.5 rounded shadow-inner">
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
-                  Intercepts
-                </p>
-                <p className="text-xl font-bold text-pink-500 drop-shadow-[0_0_8px_#ff007f]">
-                  {totalIntercepts.toString().padStart(4, '0')}
-                </p>
-              </div>
-              <div className="bg-zinc-900/80 border border-cyan-500/20 p-2.5 rounded shadow-inner">
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
-                  Threat Level
-                </p>
-                <p className="text-xl font-bold text-cyan-300 drop-shadow-[0_0_8px_#00f0ff]">
-                  {threats.length > 0 ? 'ELEVATED' : 'NOMINAL'}
-                </p>
-              </div>
+            {/* TOGGLEABLE HEADER BAR */}
+            <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-2 uppercase">
+              <span className="flex items-center gap-1 text-cyan-300 font-bold">
+                <Activity className="w-3.5 h-3.5 text-pink-500" />
+                {showAnalytics ? 'SESSION ANALYTICS' : 'OVERVIEW METRICS'}
+              </span>
+              <button
+                onClick={() => setShowAnalytics(!showAnalytics)}
+                className="flex items-center gap-1 px-2 py-0.5 bg-zinc-900 border border-cyan-500/40 hover:border-cyan-300 text-cyan-400 rounded text-[10px] transition-colors"
+              >
+                <BarChart3 className="w-3 h-3 text-pink-500" />
+                <span>{showAnalytics ? 'STREAM' : 'ANALYTICS'}</span>
+              </button>
             </div>
 
+            {/* DYNAMIC METRIC / GRAPH PANEL */}
+            {showAnalytics ? (
+              /* DETAILED GRAPH & LZ ANALYTICS PANEL */
+              <div className="bg-zinc-900/90 border border-cyan-500/30 p-2.5 rounded mb-3 space-y-2.5 animate-fadeIn">
+                {/* Gauge 1: LZ Novelty Rate Bar */}
+                <div>
+                  <div className="flex justify-between text-[10px] uppercase mb-1">
+                    <span className="text-zinc-400 flex items-center gap-1">
+                      <Compass className="w-3 h-3 text-pink-500" /> LZ Novelty
+                      Rate
+                    </span>
+                    <span
+                      className={`font-bold ${
+                        lzNoveltyRate > 40
+                          ? 'text-pink-500'
+                          : lzNoveltyRate > 15
+                            ? 'text-yellow-400'
+                            : 'text-emerald-400'
+                      }`}
+                    >
+                      {lzNoveltyRate}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-zinc-950 rounded-full h-2 overflow-hidden border border-zinc-800">
+                    <div
+                      className={`h-full transition-all duration-500 ${
+                        lzNoveltyRate > 40
+                          ? 'bg-pink-500 shadow-[0_0_8px_#ff007f]'
+                          : lzNoveltyRate > 15
+                            ? 'bg-yellow-400'
+                            : 'bg-emerald-400'
+                      }`}
+                      style={{ width: `${Math.min(lzNoveltyRate, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Gauge 2: Threat Severity Sparkline Bars */}
+                <div>
+                  <p className="text-[10px] text-zinc-400 uppercase mb-1.5">
+                    Threat Severity Breakdown
+                  </p>
+                  <div className="flex items-end gap-2 h-10 bg-zinc-950 p-1.5 rounded border border-zinc-800">
+                    <div className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                      <div
+                        className="w-full bg-pink-500/80 rounded-t transition-all duration-300"
+                        style={{
+                          height: `${(highThreats / maxThreatBucket) * 100}%`,
+                        }}
+                      />
+                      <span className="text-[8px] text-zinc-500">
+                        HIGH ({highThreats})
+                      </span>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                      <div
+                        className="w-full bg-yellow-400/80 rounded-t transition-all duration-300"
+                        style={{
+                          height: `${(medThreats / maxThreatBucket) * 100}%`,
+                        }}
+                      />
+                      <span className="text-[8px] text-zinc-500">
+                        MED ({medThreats})
+                      </span>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                      <div
+                        className="w-full bg-cyan-400/80 rounded-t transition-all duration-300"
+                        style={{
+                          height: `${(lowThreats / maxThreatBucket) * 100}%`,
+                        }}
+                      />
+                      <span className="text-[8px] text-zinc-500">
+                        LOW ({lowThreats})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Metrics Row */}
+                <div className="flex justify-between text-[10px] pt-1 border-t border-zinc-800/80 text-zinc-400">
+                  <span>
+                    Nav Dictionary:{' '}
+                    <strong className="text-cyan-300">
+                      {navDictSize} domains
+                    </strong>
+                  </span>
+                  <span>
+                    Total Intercepts:{' '}
+                    <strong className="text-pink-400">{totalIntercepts}</strong>
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* DEFAULT 2-CARD STATS GRID */
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="bg-zinc-900/80 border border-cyan-500/20 p-2.5 rounded shadow-inner">
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
+                    Intercepts
+                  </p>
+                  <p className="text-xl font-bold text-pink-500 drop-shadow-[0_0_8px_#ff007f]">
+                    {totalIntercepts.toString().padStart(4, '0')}
+                  </p>
+                </div>
+                <div className="bg-zinc-900/80 border border-cyan-500/20 p-2.5 rounded shadow-inner">
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
+                    LZ Novelty
+                  </p>
+                  <p
+                    className={`text-xl font-bold drop-shadow-[0_0_8px_#00f0ff] ${
+                      lzNoveltyRate > 40 ? 'text-pink-500' : 'text-cyan-300'
+                    }`}
+                  >
+                    {lzNoveltyRate}%
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* EVENT STREAM HEADER */}
             <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-2 uppercase">
               <span className="flex items-center gap-1">
                 <Terminal className="w-3.5 h-3.5 text-cyan-400" /> Detected
                 Stuffing
               </span>
               <button
-                onClick={clearLogs}
-                title="Clear Event Stream"
+                onClick={() => setThreats([])}
                 className="hover:text-pink-500 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="h-[240px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-cyan-500/40">
+            {/* EVENT STREAM LIST */}
+            <div
+              className={`${showAnalytics ? 'h-[150px]' : 'h-[240px]'} overflow-y-auto space-y-2 pr-1 transition-all duration-300 scrollbar-thin scrollbar-thumb-cyan-500/40`}
+            >
               {threats.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-zinc-600 space-y-2">
                   <img
                     src={hatLogo}
                     alt="Cookie Icon"
-                    className="w-[100px] h-[100px] opacity-80"
+                    className="w-[80px] h-[80px] opacity-80"
                   />
                   <p className="text-[11px] tracking-widest">
                     NO STUFFING DETECTED
