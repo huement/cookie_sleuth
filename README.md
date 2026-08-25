@@ -1,10 +1,8 @@
 <p align="center">
-  <img src="./src/assets/wordmark.png" alt="Cookie Sleuth Logo">
+  <img src="./src/assets/logomark.png" alt="Cookie Sleuth Logo">
 </p>
 
 # Cookie Stuffing Guard
-
-![Cookie Sleuth Logo](./src/assets/full_logo.png)
 
 A Manifest V3 Chrome Extension powered by React, TypeScript, and Tailwind CSS v4 that monitors browser cookie assignments to detect and audit cookie stuffing attacks in real time.
 

@@ -15,6 +15,7 @@
   "license": "MPL-2.0",
   "packageManager": "pnpm@10.33.2",
   "dependencies": {
+    "framer-motion": "^13.1.1",
     "lucide-react": "^1.31.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
