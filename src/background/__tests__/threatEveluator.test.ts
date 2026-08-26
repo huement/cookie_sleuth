@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateCookieThreat } from '../threatEvaluator';
+import type { UserIntent, ThreatEvaluationContext } from '../../types';
 
 describe('threatEvaluator Stage 0 & Stage 2 Engine v3.0 Tests', () => {
-  const baseContext = {
+  // Explicitly typing baseContext as ThreatEvaluationContext prevents `never[]` inference
+  const baseContext: ThreatEvaluationContext = {
     intentCache: [],
     pageStartTimes: new Map<number, number>(),
     inNavDict: () => false,
@@ -60,33 +62,44 @@ describe('threatEvaluator Stage 0 & Stage 2 Engine v3.0 Tests', () => {
     );
   });
 
-  // it('should heavily discount threat score when matching user intent exists', () => {
-  //   baseContext.intentCache = [
-  //     {
-  //       targetDomain: 'affiliate-merchant.com',
-  //       timestamp: Date.now(),
-  //       tabId: 1,
-  //       sourceUrl: 'https://example.com',
-  //       targetUrl: 'https://affiliate-merchant.com',
-  //       interaction: { type: 'click' },
-  //     },
-  //   ];
+  describe('threatEvaluator User Intent Suppression', () => {
+    // Explicitly typing baseContext as ThreatEvaluationContext prevents `never[]` inference
+    const baseContext: ThreatEvaluationContext = {
+      intentCache: [],
+      pageStartTimes: new Map<number, number>(),
+      inNavDict: () => false,
+      pruneIntents: () => {},
+      whitelistedDomains: ['trustedpartner.com'],
+    };
 
-  //   const result = evaluateCookieThreat(
-  //     {
-  //       cookieName: 'aff_id',
-  //       cookieDomain: 'affiliate-merchant.com',
-  //       requestUrl: 'https://affiliate-merchant.com/buy?aff_id=777',
-  //       deliveryMechanism: 'main_frame',
-  //       tabId: 1,
-  //       tabUrl: 'https://affiliate-merchant.com',
-  //     },
-  //     baseContext
-  //   );
+    it('should heavily discount threat score when matching user intent exists', () => {
+      baseContext.intentCache = [
+        {
+          targetDomain: 'affiliate-merchant.com',
+          timestamp: Date.now(),
+          tabId: 1,
+          sourceUrl: 'https://example.com',
+          targetUrl: 'https://affiliate-merchant.com',
+          interaction: { type: 'click' },
+        },
+      ];
 
-  //   // Score should be suppressed or fall below CONFIDENCE_THRESHOLD (45)
-  //   expect(result).toBeUndefined();
-  // });
+      const result = evaluateCookieThreat(
+        {
+          cookieName: 'aff_id',
+          cookieDomain: 'affiliate-merchant.com',
+          requestUrl: 'https://affiliate-merchant.com/buy?aff_id=777',
+          deliveryMechanism: 'main_frame',
+          tabId: 1,
+          tabUrl: 'https://affiliate-merchant.com',
+        },
+        baseContext
+      );
+
+      // Score is discounted by 80% due to matching click intent and falls below CONFIDENCE_THRESHOLD (45)
+      expect(result).toBeUndefined();
+    });
+  });
 
   it('should apply early page-load timing penalty when dropped under 500ms', () => {
     const tabId = 42;

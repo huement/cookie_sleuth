@@ -25,3 +25,11 @@ export interface ThreatLog {
   deliveryMechanism: string;
   reasons: string[]; // Dynamic explanation breakdown
 }
+
+export interface ThreatEvaluationContext {
+  intentCache: UserIntent[];
+  pageStartTimes: Map<number, number>;
+  inNavDict: (domain: string) => boolean;
+  pruneIntents: () => void;
+  whitelistedDomains?: string[];
+}
