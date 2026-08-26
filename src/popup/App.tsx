@@ -20,6 +20,10 @@ import type { ThreatLog } from '../types';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ThreatDetails } from './ThreatDetails';
+import {
+  purgeAllThreatCookies,
+  NukeAllButton,
+} from '../components/RemediationControls';
 import hatLogo from '../assets/sleuth-lg.png';
 import {
   AFFILIATE_COOKIE_MARKERS,
@@ -159,6 +163,18 @@ export const App = () => {
       fetchLiveCookies();
     });
   };
+
+  const fetchState = () => {
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.get(['threats'], (res) => {
+        setThreats(Array.isArray(res.threats) ? res.threats : []);
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchState();
+  }, []);
 
   const filteredCookies = rawCookies.filter(
     (c) =>
@@ -631,16 +647,15 @@ export const App = () => {
 
                       {/* EVENT STREAM HEADER */}
                       <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-2 uppercase">
-                        <span className="flex items-center gap-1">
-                          <Terminal className="w-3.5 h-3.5 text-cyan-400" />{' '}
+                        <span className="flex items-center gap-1 font-mono font-bold">
+                          <Terminal className="w-3.5 h-3.5 text-cyan-400" />
                           Detected Stuffing
                         </span>
-                        <button
-                          onClick={() => setThreats([])}
-                          className="hover:text-pink-500 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <NukeAllButton
+                          threats={threats}
+                          onActionComplete={fetchState}
+                          variant="inline"
+                        />
                       </div>
 
                       {/* EVENT STREAM LIST */}

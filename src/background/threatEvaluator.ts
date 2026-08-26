@@ -30,6 +30,18 @@ type ThreatEvaluationContext = {
   pruneIntents: () => void;
 };
 
+export interface ThreatEvaluationParams {
+  cookieName: string;
+  cookieDomain: string;
+  tabDomain: string;
+  deliveryChannel: 'main_frame' | 'script' | 'sub_frame' | 'fetch';
+  hasUserIntent: boolean;
+  inNavDict: boolean;
+  is302Redirect: boolean;
+  timeDeltaMs: number;
+  whitelistedDomains?: string[];
+}
+
 export const evaluateCookieThreat = (
   args: EvaluateCookieThreatArgs,
   context: ThreatEvaluationContext

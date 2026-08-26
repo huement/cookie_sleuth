@@ -1,9 +1,10 @@
-import { HelpCircle, ExternalLink, X, Zap, Info } from 'lucide-react';
+import { HelpCircle, X, Zap, Info } from 'lucide-react';
 import { useState } from 'react';
 import type { ThreatLog } from '../types';
-
-const DOCS_BASE_URL =
-  'https://github.com/huement/cookie_sleuth/blob/main/THREATS.md';
+import {
+  PurgeThreatButton,
+  TrustDomainButton,
+} from '../components/RemediationControls';
 
 interface ReasonDetailSpec {
   title: string;
@@ -11,6 +12,11 @@ interface ReasonDetailSpec {
   category: string;
   description: string;
   mitigation: string;
+}
+
+interface ThreatDetailsProps {
+  threat: ThreatLog;
+  onRefresh?: () => void;
 }
 
 // Map signal reason strings to structured spec explanations
@@ -127,7 +133,6 @@ const getReasonSpec = (reasonText: string): ReasonDetailSpec => {
     };
   }
 
-  // Generic fallback
   return {
     title: 'Detection Signal Reason',
     weight: 'Heuristic Evaluation Weight',
@@ -137,12 +142,11 @@ const getReasonSpec = (reasonText: string): ReasonDetailSpec => {
   };
 };
 
-export const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
+export const ThreatDetails = ({ threat, onRefresh }: ThreatDetailsProps) => {
   const [selectedReason, setSelectedReason] = useState<ReasonDetailSpec | null>(
     null
   );
 
-  // Normalize 0-100 score scale
   const scorePercent = threat.score
     ? threat.score > 1
       ? Math.min(Math.round(threat.score), 100)
@@ -170,23 +174,28 @@ export const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
 
   return (
     <div
-      onClick={(e) => e.stopPropagation()} // Prevents card collapse on click
-      className="mt-2 p-2 bg-zinc-800/60 border border-zinc-700/80 rounded-sm text-xs animate-fadeIn space-y-1.5 relative"
+      onClick={(e) => e.stopPropagation()}
+      className="mt-2 p-2 bg-zinc-800/60 border border-zinc-700/80 rounded-sm text-xs animate-fadeIn space-y-2 relative"
     >
-      {/* SCORE HEADER */}
-      <div className="flex items-center justify-between border-b border-zinc-700/50 pb-1">
-        <p className={`font-bold ${getScoreColorClass(scorePercent)}`}>
-          {scorePercent}% {getScoreLabel(scorePercent)}
-        </p>
-        <a
-          href={DOCS_BASE_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
-        >
-          <span>FULL SPEC</span>
-          <ExternalLink className="w-2.5 h-2.5" />
-        </a>
+      {/* SCORE & ACTIONS HEADER (2 ROWS) */}
+      <div className="border-b border-zinc-700/50 pb-1.5 space-y-1.5">
+        {/* ROW 1: SCORE PERCENT & LABEL */}
+        <div className="flex items-center justify-between">
+          <p
+            className={`font-mono font-bold ${getScoreColorClass(scorePercent)}`}
+          >
+            {scorePercent}% {getScoreLabel(scorePercent)}
+          </p>
+        </div>
+
+        {/* ROW 2: REMEDIATION ACTION BUTTONS */}
+        <div className="flex items-center justify-end gap-1.5">
+          <TrustDomainButton
+            domain={threat.domain}
+            onActionComplete={onRefresh}
+          />
+          <PurgeThreatButton threat={threat} onActionComplete={onRefresh} />
+        </div>
       </div>
 
       {/* REASONS LIST */}
@@ -223,7 +232,6 @@ export const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
           className="fixed inset-0 bg-zinc-950/95 backdrop-blur-md z-50 p-4 flex flex-col justify-between animate-fadeIn border-2 border-cyan-500/50"
         >
           <div className="space-y-3">
-            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-cyan-500/30 pb-2">
               <span className="text-xs font-black text-pink-500 tracking-wider flex items-center gap-1.5 uppercase drop-shadow-[0_0_6px_#ff007f]">
                 <Zap className="w-4 h-4 text-cyan-400" /> SIGNAL SPECIFICATION
@@ -236,7 +244,6 @@ export const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
               </button>
             </div>
 
-            {/* Spec Content */}
             <div className="text-[11px] text-zinc-300 leading-relaxed space-y-2.5 font-mono">
               <div className="bg-zinc-900/90 border border-cyan-500/30 p-2 rounded space-y-1">
                 <p className="text-[9px] text-cyan-400 uppercase tracking-widest font-bold">
@@ -262,7 +269,6 @@ export const ThreatDetails = ({ threat }: { threat: ThreatLog }) => {
             </div>
           </div>
 
-          {/* Close Button */}
           <button
             onClick={() => setSelectedReason(null)}
             className="w-full py-1.5 bg-cyan-950 border border-cyan-500/50 hover:bg-cyan-900 text-cyan-300 font-bold text-xs uppercase rounded transition-colors tracking-widest shadow-[0_0_10px_rgba(0,240,255,0.2)] mt-3"
