@@ -8,6 +8,8 @@ import manifest from './manifest.json';
 export default defineConfig({
   plugins: [react(), tailwindcss(), crx({ manifest })],
   build: {
+    outDir: 'dist',
+    emptyOutDir: true,
     minify: 'terser',
     cssMinify: true,
   },

@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "zip": "pnpm build && bestzip cookie_sleuth_v$npm_package_version.zip ./dist/*"
   },
   "keywords": [],
   "author": "Huement.com",
@@ -27,6 +28,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.0.5",
+    "bestzip": "^3.0.2",
     "eslint": "^10.8.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",

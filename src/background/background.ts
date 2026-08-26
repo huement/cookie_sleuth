@@ -6,7 +6,9 @@ const INTENT_EXPIRY_MS = 4000;
 let intentCache: UserIntent[] = [];
 const pageStartTimes = new Map<number, number>();
 let navDict = new Set<string>();
-// Add state metrics tracking
+let whitelistedDomains: string[] = [];
+
+// Session Metrics
 let totalCookieEvents = 0;
 let novelCookieEvents = 0;
 
@@ -22,15 +24,38 @@ const updateSessionMetricsInStorage = () => {
   });
 };
 
-// --- NAVIGATION DICTIONARY (LZ NOVELTY) ---
-chrome.storage.local.get(['navDict'], (res) => {
-  if (Array.isArray(res.navDict)) {
-    navDict = new Set(res.navDict);
+// --- INITIAL STORAGE RECOVERY ---
+chrome.storage.local.get(
+  ['navDict', 'whitelistedDomains', 'threats'],
+  (res) => {
+    if (Array.isArray(res.navDict)) {
+      navDict = new Set(res.navDict);
+    }
+    if (Array.isArray(res.whitelistedDomains)) {
+      whitelistedDomains = res.whitelistedDomains;
+    } else {
+      whitelistedDomains = [];
+    }
+    if (Array.isArray(res.threats) && res.threats.length > 0) {
+      chrome.action.setIcon({
+        path: { 16: '/icon16-alert.png', 32: '/icon32-alert.png' },
+      });
+      chrome.action.setBadgeText({ text: '!' });
+      chrome.action.setBadgeBackgroundColor({ color: '#FF007F' });
+    }
+  }
+);
+
+// Sync whitelist changes dynamically when the user trusts or untrusts a domain
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.whitelistedDomains) {
+    const newValue = changes.whitelistedDomains.newValue;
+    whitelistedDomains = Array.isArray(newValue) ? newValue : [];
   }
 });
 
+// --- NAVIGATION DICTIONARY (LZ NOVELTY) ---
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-// Update scheduleSaveNavDict to include metrics sync
 const scheduleSaveNavDict = () => {
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
@@ -68,7 +93,6 @@ const deRiskDomain = (hostname: string) => {
 
     const remainingThreats = res.threats.filter((threat: ThreatLog) => {
       const threatDomain = threat.domain.toLowerCase();
-      // De-risk if user navigated to exact domain or parent apex domain
       const isDeRisked =
         threatDomain === cleanHost ||
         threatDomain.endsWith('.' + apex) ||
@@ -83,7 +107,6 @@ const deRiskDomain = (hostname: string) => {
         threatCount: remainingThreats.length,
       });
 
-      // Reset alert state if all active threats were de-risked
       if (remainingThreats.length === 0) {
         chrome.action.setIcon({
           path: { 16: '/icon16.png', 32: '/icon32.png' },
@@ -115,7 +138,7 @@ const addToNavDict = (hostname: string) => {
 
   if (changed) {
     scheduleSaveNavDict();
-    deRiskDomain(cleanHost); // <-- Retroactively clear de-risked domain threats
+    deRiskDomain(cleanHost);
   }
 };
 
@@ -125,17 +148,6 @@ const pruneIntents = () => {
     (item) => now - item.timestamp < INTENT_EXPIRY_MS
   );
 };
-
-// --- STARTUP RECOVERY ---
-chrome.storage.local.get(['threats'], (res) => {
-  if (Array.isArray(res.threats) && res.threats.length > 0) {
-    chrome.action.setIcon({
-      path: { 16: '/icon16-alert.png', 32: '/icon32-alert.png' },
-    });
-    chrome.action.setBadgeText({ text: '!' });
-    chrome.action.setBadgeBackgroundColor({ color: '#FF007F' });
-  }
-});
 
 // --- THREAT EVALUATION WRAPPER ---
 const evaluateCookieThreat = (
@@ -164,6 +176,7 @@ const evaluateCookieThreat = (
       pageStartTimes,
       inNavDict,
       pruneIntents,
+      whitelistedDomains,
     }
   );
 
@@ -191,7 +204,6 @@ const evaluateCookieThreat = (
     });
   });
 
-  // Inside evaluateCookieThreat wrapper (before saving threat to storage):
   totalCookieEvents++;
   if (!inNavDict(cookieDomain)) {
     novelCookieEvents++;
@@ -241,6 +253,7 @@ chrome.webRequest.onHeadersReceived.addListener(
 
           if (details.tabId >= 0) {
             chrome.tabs.get(details.tabId, (tab) => {
+              if (chrome.runtime.lastError) return;
               evaluateCookieThreat(
                 cookieName,
                 requestDomain,
@@ -288,6 +301,7 @@ chrome.cookies.onChanged.addListener((changeInfo) => {
 
   if (matchingIntent?.tabId) {
     chrome.tabs.get(matchingIntent.tabId, (tab) => {
+      if (chrome.runtime.lastError) return;
       evaluateCookieThreat(
         changeInfo.cookie.name,
         changeInfo.cookie.domain,

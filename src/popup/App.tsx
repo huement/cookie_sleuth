@@ -20,10 +20,7 @@ import type { ThreatLog } from '../types';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ThreatDetails } from './ThreatDetails';
-import {
-  purgeAllThreatCookies,
-  NukeAllButton,
-} from '../components/RemediationControls';
+import { NukeAllButton } from '../components/RemediationControls';
 import hatLogo from '../assets/sleuth-lg.png';
 import {
   AFFILIATE_COOKIE_MARKERS,
