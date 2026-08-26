@@ -28,6 +28,7 @@ type ThreatEvaluationContext = {
   pageStartTimes: Map<number, number>;
   inNavDict: (domain: string) => boolean;
   pruneIntents: () => void;
+  whitelistedDomains?: string[];
 };
 
 export interface ThreatEvaluationParams {
@@ -56,13 +57,29 @@ export const evaluateCookieThreat = (
     statusCode,
     requestTimeStamp,
   } = args;
-  const { intentCache, pageStartTimes, inNavDict, pruneIntents } = context;
+  const {
+    intentCache,
+    pageStartTimes,
+    inNavDict,
+    pruneIntents,
+    whitelistedDomains = [],
+  } = context;
 
   const cleanCookieDomain = cookieDomain
     .replace(/^\./, '')
-    .replace(/^www\./, '');
+    .replace(/^www\./, '')
+    .toLowerCase();
 
-  // 0. Absolute Ad-Tech Suppression
+  // STAGE 0: User Whitelist Suppression (Early Exit)
+  if (
+    whitelistedDomains.some(
+      (d) => cleanCookieDomain === d || cleanCookieDomain.endsWith('.' + d)
+    )
+  ) {
+    return;
+  }
+
+  // STAGE 0: Absolute Ad-Tech Suppression
   if (isAdTechDomain(cleanCookieDomain)) {
     return;
   }
