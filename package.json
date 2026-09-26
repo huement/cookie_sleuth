@@ -1,6 +1,6 @@
 {
   "name": "@huement/cookie-sleuth",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "description": "Real-time cookie stuffing and affiliate fraud detective.",
   "main": "index.js",
   "scripts": {

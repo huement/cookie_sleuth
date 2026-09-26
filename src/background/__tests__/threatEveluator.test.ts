@@ -57,9 +57,11 @@ describe('threatEvaluator Stage 0 & Stage 2 Engine v3.0 Tests', () => {
     expect(result).toBeDefined();
     expect(result?.score).toBeGreaterThanOrEqual(80);
     expect(result?.type).toBe('UNSOLICITED_COOKIE');
-    expect(result?.reasons).toContain(
-      'High-risk stealth combination: Hidden iframe + No Intent + Novel Domain'
-    );
+    expect(
+      result?.signals.some((s) =>
+        s.label.includes('High-risk stealth combination')
+      )
+    ).toBe(true);
   });
 
   describe('threatEvaluator User Intent Suppression', () => {
@@ -97,7 +99,10 @@ describe('threatEvaluator Stage 0 & Stage 2 Engine v3.0 Tests', () => {
       );
 
       // Score is discounted by 80% due to matching click intent and falls below CONFIDENCE_THRESHOLD (45)
-      expect(result).toBeUndefined();
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result.score).toBeLessThan(45);
+      }
     });
   });
 
@@ -120,7 +125,9 @@ describe('threatEvaluator Stage 0 & Stage 2 Engine v3.0 Tests', () => {
 
     expect(result).toBeDefined();
     expect(
-      result?.reasons.some((r) => r.includes('Fired during initial page load'))
+      result?.signals.some((r) =>
+        r.label.includes('Fired during initial page load')
+      )
     ).toBe(true);
   });
 });

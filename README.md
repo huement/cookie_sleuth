@@ -2,7 +2,7 @@
   <img src="./src/assets/logomark.png" alt="Cookie Sleuth Logo">
 </p>
 
-# Threat Detection Specifications & Technical Guide (v3.0 Engine)
+# Threat Detection Specifications & Technical Guide (v3.2 Engine)
 
 This document details the threat detection architecture, information-theoretic algorithms, signal weights, and normalized risk scoring mechanisms used by **Cookie Sleuth** to identify cookie stuffing, unauthorized affiliate attribution, and covert tracking drops.
 

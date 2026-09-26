@@ -14,6 +14,13 @@ export interface UserIntent {
   };
 }
 
+export interface Signal {
+  id: string;
+  label: string;
+  weight: number;
+  description: string;
+}
+
 export interface ThreatLog {
   id: string;
   domain: string;
@@ -23,7 +30,7 @@ export interface ThreatLog {
   score?: number;
   context?: 'first-party' | 'third-party';
   deliveryMechanism: string;
-  reasons: string[]; // Dynamic explanation breakdown
+  signals: Signal[]; // Dynamic explanation breakdown
 }
 
 export interface ThreatEvaluationContext {

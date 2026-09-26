@@ -1,4 +1,4 @@
-import type { UserIntent, ThreatLog } from '../types';
+import type { UserIntent, ThreatLog, Signal } from '../types';
 import {
   AFFILIATE_COOKIE_MARKERS,
   KNOWN_AFFILIATE_NETWORKS,
@@ -89,13 +89,18 @@ export const evaluateCookieThreat = (
   // =================================================================
   // STAGE 1: Affiliate Identification (Binary Check)
   // =================================================================
-  let isAffiliate = false;
-  const reasons: string[] = [];
+
+  const signals: Signal[] = [];
 
   for (const marker of AFFILIATE_COOKIE_MARKERS) {
     if (marker.pattern.test(cookieName)) {
-      isAffiliate = true;
-      reasons.push(`Affiliate marker: ${marker.label}`);
+      signals.push({
+        id: 'affiliate-marker',
+        label: `Affiliate marker: ${marker.label}`,
+        weight: 0,
+        description:
+          'The cookie name matches a known affiliate marketing pattern.',
+      });
       break;
     }
   }
@@ -105,18 +110,26 @@ export const evaluateCookieThreat = (
       network.pattern.test(cookieDomain) ||
       network.pattern.test(requestUrl)
     ) {
-      isAffiliate = true;
-      reasons.push(`Affiliate network: ${network.name}`);
+      signals.push({
+        id: 'affiliate-network',
+        label: `Affiliate network: ${network.name}`,
+        weight: 0,
+        description:
+          'The cookie domain or request URL matches a known affiliate network.',
+      });
       break;
     }
   }
 
   if (AFFILIATE_URL_PARAMS.test(requestUrl)) {
-    isAffiliate = true;
-    reasons.push('Affiliate/UTM tracking URL parameters');
+    signals.push({
+      id: 'affiliate-url-params',
+      label: 'Affiliate/UTM tracking URL parameters',
+      weight: 0,
+      description:
+        'The request URL contains common affiliate or UTM tracking parameters.',
+    });
   }
-
-  if (!isAffiliate) return;
 
   pruneIntents();
 
@@ -132,31 +145,63 @@ export const evaluateCookieThreat = (
         intent.targetDomain.includes(cleanCookieDomain))
   );
   const s1_noIntent = hasIntentMatch ? 0.0 : 1.0;
-  if (!hasIntentMatch) reasons.push('No matching user intent');
+  if (!hasIntentMatch)
+    signals.push({
+      id: 'no-user-intent',
+      label: 'No matching user intent',
+      weight: 30,
+      description:
+        'No recent user interaction (like a click) was found that led to this cookie being set.',
+    });
 
   // Signal 2: Delivery Mechanism (Weight 0.20)
   let s2_delivery = 0.0;
   if (deliveryMechanism === 'sub_frame') {
     s2_delivery = 1.0;
-    reasons.push('Set via background iframe');
+    signals.push({
+      id: 'delivery-sub-frame',
+      label: 'Set via background iframe',
+      weight: 20,
+      description:
+        'The cookie was set by a hidden iframe, a common technique for cookie stuffing.',
+    });
   } else if (
     deliveryMechanism === 'script' ||
     deliveryMechanism === 'xmlhttprequest'
   ) {
     s2_delivery = 0.6;
-    reasons.push(`Set via client ${deliveryMechanism}`);
+    signals.push({
+      id: 'delivery-script',
+      label: `Set via client ${deliveryMechanism}`,
+      weight: 12,
+      description:
+        'The cookie was set by a script, which can be used for cookie stuffing.',
+    });
   }
 
   // Signal 3: LZ Novelty (Weight 0.20)
   const isNovelDomain = !inNavDict(cleanCookieDomain);
   const s3_lzNovelty = isNovelDomain ? 1.0 : 0.0;
   if (isNovelDomain)
-    reasons.push('Novel domain (unvisited in navigation history)');
+    signals.push({
+      id: 'novel-domain',
+      label: 'Novel domain (unvisited in navigation history)',
+      weight: 20,
+      description:
+        'This domain has not been visited before in your navigation history, which can be suspicious.',
+    });
 
   // Signal 4: HTTP Redirect Hop (Weight 0.15)
   const isRedirect = !!(statusCode && statusCode >= 300 && statusCode < 400);
   const s4_redirect = isRedirect ? 1.0 : 0.0;
-  if (isRedirect) reasons.push(`Set during HTTP ${statusCode} redirect hop`);
+  if (isRedirect)
+    signals.push({
+      id: 'redirect-hop',
+      label: `Set during HTTP ${statusCode} redirect hop`,
+      weight: 15,
+      description:
+        'The cookie was set during a redirect, which can be a sign of cookie stuffing.',
+    });
 
   // Signal 5: Early Timing (Weight 0.10)
   let s5_earlyTiming = 0.0;
@@ -166,9 +211,13 @@ export const evaluateCookieThreat = (
 
     if (elapsedMs >= 0 && elapsedMs < 500) {
       s5_earlyTiming = 1.0;
-      reasons.push(
-        `Fired during initial page load (${Math.round(elapsedMs)}ms)`
-      );
+      signals.push({
+        id: 'early-timing',
+        label: `Fired during initial page load (${Math.round(elapsedMs)}ms)`,
+        weight: 10,
+        description:
+          'The cookie was set very early during page load, which can be a sign of cookie stuffing.',
+      });
     } else if (elapsedMs >= 500 && elapsedMs < 2000) {
       s5_earlyTiming = Math.max(0, 1 - (elapsedMs - 500) / 1500);
     }
@@ -190,47 +239,51 @@ export const evaluateCookieThreat = (
     }
   }
   const s6_thirdParty = threatContext === 'third-party' ? 1.0 : 0.0;
-
-  // Calculate Base Normalized Suspicion Score (0.0 to 1.0)
-  let normalizedSuspicion =
-    s1_noIntent * 0.3 +
-    s2_delivery * 0.2 +
-    s3_lzNovelty * 0.2 +
-    s4_redirect * 0.15 +
-    s5_earlyTiming * 0.1 +
-    s6_thirdParty * 0.05;
+  if (s6_thirdParty > 0) {
+    signals.push({
+      id: 'third-party-context',
+      label: 'Set in a third-party context',
+      weight: 5,
+      description:
+        'The cookie was set in a third-party context, which is common for tracking cookies.',
+    });
+  }
 
   // Combination Stealth Boosts
   if (s1_noIntent === 1.0 && s2_delivery === 1.0 && s3_lzNovelty === 1.0) {
-    normalizedSuspicion += 0.25; // Hidden iframe + No Intent + Novel Domain
-    reasons.push(
-      'High-risk stealth combination: Hidden iframe + No Intent + Novel Domain'
-    );
+    signals.push({
+      id: 'stealth-combo-1',
+      label:
+        'High-risk stealth combination: Hidden iframe + No Intent + Novel Domain',
+      weight: 25,
+      description:
+        'A combination of high-risk signals was detected, strongly indicating cookie stuffing.',
+    });
   }
 
   if (s1_noIntent === 1.0 && s4_redirect === 1.0 && s3_lzNovelty === 1.0) {
-    normalizedSuspicion += 0.2; // Silent 302 Hop + No Intent + Novel Domain
-    reasons.push(
-      'High-risk stealth combination: Silent 302 Hop + No Intent + Novel Domain'
-    );
+    signals.push({
+      id: 'stealth-combo-2',
+      label:
+        'High-risk stealth combination: Silent 302 Hop + No Intent + Novel Domain',
+      weight: 20,
+      description:
+        'A combination of high-risk signals was detected, strongly indicating cookie stuffing.',
+    });
   }
+
+  let score = signals.reduce((acc, signal) => acc + signal.weight, 0);
 
   // Infrastructure & User Intent Discounts
   if (isLegitInfra) {
-    normalizedSuspicion *= 0.1; // 90% discount for trusted infrastructure
+    score *= 0.1; // 90% discount for trusted infrastructure
   }
 
   if (hasIntentMatch) {
-    normalizedSuspicion *= isRedirect ? 0.5 : 0.2; // 80% discount for intentional click
+    score *= isRedirect ? 0.5 : 0.2; // 80% discount for intentional click
   }
 
-  // Scale Final Normalized Score to Integer 0 - 100
-  const score = Math.min(
-    100,
-    Math.max(0, Math.round(normalizedSuspicion * 100))
-  );
-
-  if (score < CONFIDENCE_THRESHOLD) return;
+  score = Math.min(100, Math.max(0, Math.round(score)));
 
   return {
     domain: cleanCookieDomain,
@@ -239,6 +292,6 @@ export const evaluateCookieThreat = (
     score,
     context: threatContext,
     deliveryMechanism,
-    reasons,
+    signals,
   };
 };

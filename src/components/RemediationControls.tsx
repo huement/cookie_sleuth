@@ -12,7 +12,7 @@ interface ActionProps {
 }
 
 export const NukeAllButton: React.FC<
-  ActionProps & { threats: ThreatLog[]; variant?: 'full' | 'inline' }
+  ActionProps & { threats: ThreatLog[]; variant?: 'full' | 'inline' | 'bottom' }
 > = ({ threats, onActionComplete, variant = 'full' }) => {
   const [isNuking, setIsNuking] = useState(false);
 
@@ -35,6 +35,33 @@ export const NukeAllButton: React.FC<
           threats.length > 0
             ? 'bg-pink-950/80 border-pink-500/80 text-pink-400 hover:bg-pink-900/90 hover:border-pink-400 shadow-[0_0_8px_rgba(255,0,127,0.3)] active:scale-95 cursor-pointer'
             : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed opacity-60'
+        }`}
+      >
+        {isNuking ? (
+          <>
+            <RefreshCw className="w-2.5 h-2.5 animate-spin text-pink-400" />
+            <span>PURGING...</span>
+          </>
+        ) : (
+          <>
+            <Flame className="w-2.5 h-2.5 text-pink-500 animate-pulse" />
+            <span>NUKE ALL</span>
+          </>
+        )}
+      </button>
+    );
+  }
+
+  if (variant === 'bottom') {
+    return (
+      <button
+        onClick={handleNuke}
+        disabled={isNuking || threats.length === 0}
+        title="Delete all active threat cookies"
+        className={`absolute bottom-2 right-2 z-20 px-2.5 py-1 rounded flex items-center gap-1 font-mono font-black text-[10px] uppercase tracking-wider transition-all border backdrop-blur-md shadow-lg ${
+          threats.length > 0
+            ? 'bg-pink-950/90 border-pink-500/80 text-pink-400 hover:bg-pink-900 hover:border-pink-400 shadow-[0_0_10px_rgba(255,0,127,0.4)] active:scale-95 cursor-pointer'
+            : 'bg-zinc-900/90 border-zinc-800 text-zinc-600 cursor-not-allowed opacity-60'
         }`}
       >
         {isNuking ? (
@@ -95,12 +122,17 @@ export const PurgeThreatButton: React.FC<
       onClick={handleDelete}
       disabled={isDeleting}
       title="Delete cookies for this threat domain"
-      className="p-1.5 bg-zinc-900 border border-zinc-800 hover:border-pink-500/60 hover:text-pink-400 text-zinc-400 rounded transition-colors cursor-pointer disabled:cursor-not-allowed"
+      className="h-7 px-2.5 border bg-pink-950/40 border-pink-400/60 hover:border-pink-300 hover:bg-pink-950/80 text-zinc-300 hover:text-pink-300 rounded text-[10px] font-mono font-bold uppercase transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed shadow-sm group flex-shrink-0"
     >
       {isDeleting ? (
-        <RefreshCw className="w-3.5 h-3.5 animate-spin text-pink-500" />
+        <>
+          <RefreshCw className="w-3 h-3 animate-spin text-pink-400" />
+          <span>PURGING...</span>
+        </>
       ) : (
-        <Trash2 className="w-3.5 h-3.5" />
+        <>
+          <Trash2 className="w-3 h-3 text-zinc-400 group-hover:text-pink-400 transition-colors" />
+        </>
       )}
     </button>
   );
@@ -125,10 +157,10 @@ export const TrustDomainButton: React.FC<ActionProps & { domain: string }> = ({
       onClick={handleTrust}
       disabled={isTrusting}
       title="Trust domain and dismiss future threat alerts"
-      className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:border-emerald-500 hover:text-emerald-400 text-zinc-400 rounded text-[10px] font-mono font-bold uppercase transition-colors flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+      className="h-7 px-2.5 bg-emerald-950/40 border border-emerald-500/80 hover:border-emerald-400 hover:bg-emerald-950/80 text-emerald-400 rounded text-[10px] font-mono font-bold uppercase transition-all flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed shadow-[0_0_8px_rgba(16,185,129,0.2)] group flex-shrink-0"
     >
-      <ShieldCheck className="w-3 h-3 text-emerald-500" />
-      <span>{isTrusting ? 'TRUSTING...' : 'TRUST DOMAIN'}</span>
+      <ShieldCheck className="w-3 h-3 text-emerald-400 group-hover:scale-110 transition-transform" />
+      <span>{isTrusting ? 'TRUSTING...' : 'TRUST'}</span>
     </button>
   );
 };

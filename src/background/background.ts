@@ -180,7 +180,28 @@ const evaluateCookieThreat = (
     }
   );
 
+  const CONFIDENCE_THRESHOLD = 45;
+
   if (!threatData) return;
+
+  if (threatData.score === undefined) return;
+
+  if (threatData.score < CONFIDENCE_THRESHOLD) {
+    chrome.storage.local.get(['calibrationData'], (res) => {
+      const calibrationData: ThreatLog[] = Array.isArray(res.calibrationData)
+        ? res.calibrationData
+        : [];
+      const newThreat: ThreatLog = {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        ...threatData,
+      };
+      chrome.storage.local.set({
+        calibrationData: [newThreat, ...calibrationData].slice(0, 100),
+      });
+    });
+    return;
+  }
 
   const newThreat: ThreatLog = {
     id: crypto.randomUUID(),
