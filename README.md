@@ -6,11 +6,29 @@
 
 This document details the threat detection architecture, information-theoretic algorithms, signal weights, and normalized risk scoring mechanisms used by **Cookie Sleuth** to identify cookie stuffing, unauthorized affiliate attribution, and covert tracking drops.
 
+## Special Thanks
+
+- **James** | [https://www.linkedin.com/in/jamesnardell/](https://www.linkedin.com/in/jamesnardell/) has been a huge help in reviewing my code and making some really helpful suggestions.
+
+![Cookie Sleuth Screenshot](./docs/sleuth/2.png)
+
+## Transparent Overview & Explanation
+
+In Cookie Sleuth, we use a **3-Stage Normalized Detection Pipeline** to distinguish legitimate web traffic, display ad tracking, and voluntary affiliate link clicks from covert cookie stuffing. The rest of this document goes in depth on how we score each cookie and arrive at our assessment.
+
+If you would like to contribute to the project, please feel free to reach out to me on [LinkedIn](https://www.linkedin.com/in/derekscott13/), [X.com](https://x.com/johnnyfortune), or my website [huement.com](https://huement.com), I would love to hear your feedback and see how we can improve the project.
+
 ---
 
 ## 1. Executive Summary & Engine Architecture
 
 Cookie Sleuth uses a **3-Stage Normalized Detection Pipeline** to distinguish legitimate web traffic, display ad tracking, and voluntary affiliate link clicks from covert cookie stuffing.
+
+### Scoring and Thresholds
+
+The extension makes is Clearly visible what is contributing to the score, IE no user intents adds +30% to overall score etc. This way you have a clear breakdown of what is moving the needle in deciding whether or not a cookie has in fact been "stuffed". Clicking any of the items contributing to the score also brings up an informative window explaining what that item is and why it matters.
+
+### Algorithmic Breakdown
 
 ```text
 +-------------------------------------------------------------------+
@@ -18,15 +36,15 @@ Cookie Sleuth uses a **3-Stage Normalized Detection Pipeline** to distinguish le
 | Checks: Cookie Fingerprints, Network Domains, URL Query Parameters|
 | Filter: Absolute Ad-Tech & DSP/SSP Suppression (DoubleClick, etc.)|
 +-------------------------------------------------------------------+
-                 │
-    [ Affiliate Indicator? ]
-                 │
-  ┌──────────────┴─────────────────────────────────┐
-  ▼                                                ▼
-[ YES ]                                          [ NO ]
-  │                                                │
-  ▼                                                ▼
-+------------------------------------+      [ IGNORE / CLEAN ]
+                      │
+         [ Affiliate Indicator? ]
+                      │
+       ┌──────────────┴─────────────────────────────────┐
+       ▼                                                ▼
+     [ YES ]                                          [ NO ]
+       │                                                │
+       ▼                                                ▼
++------------------------------------+           [ IGNORE / CLEAN ]
 | STAGE 2: NORMALIZED SUSPICION      |
 | Signal 1: User Intent      (30%)   |
 | Signal 2: Delivery Vector  (20%)   |
@@ -282,3 +300,7 @@ pnpm format
 ## Laboratory Testing
 
 In order to test out the extension, I have setup a Laravel backend that will trigger cookie stuffing attacks. The backend is located at [https://labs.huement.com](labs.huement.com) . In order to accurately test the extension, you can't use only a Javascript vectors for the attack, you will need a server of some kind, (Python, PHP, etc) in order to trigger some of the attacks. However there is a Github pages hosted version that will allow you to test SOME possible cookie stuffing attacks that is going to be released soon, as well as a docker container version that will allow for all possible cookie stuff attacks. So follow the repo and stay tuned for those upcoming releases.
+
+## PREVIEW
+
+![docs/sleuth.gif](docs/sleuth.gif)
