@@ -74,23 +74,37 @@ export const App = () => {
   };
 
   const fetchAffiliateCookies = () => {
-    if (typeof chrome === 'undefined' || !chrome.cookies) return;
-    setIsLoadingAffiliateCookies(true);
-
-    chrome.cookies.getAll({}, (cookies) => {
-      const filteredAffiliates = (cookies || []).filter((cookie) => {
-        const matchesMarker = AFFILIATE_COOKIE_MARKERS.some((marker) =>
-          marker.pattern.test(cookie.name)
-        );
-        const matchesNetwork = KNOWN_AFFILIATE_NETWORKS.some((network) =>
-          network.pattern.test(cookie.domain)
-        );
-        return matchesMarker || matchesNetwork;
-      });
-
-      setAffiliateCookies(filteredAffiliates);
+    if (typeof chrome?.cookies?.getAll !== 'function') {
       setIsLoadingAffiliateCookies(false);
-    });
+      return;
+    }
+    setIsLoadingAffiliateCookies(true);
+    try {
+      chrome.cookies.getAll({}, (cookies) => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            'Failed to get affiliate cookies:',
+            chrome.runtime.lastError.message
+          );
+          setIsLoadingAffiliateCookies(false);
+          return;
+        }
+        const filteredAffiliates = (cookies || []).filter((cookie) => {
+          const matchesMarker = AFFILIATE_COOKIE_MARKERS.some((marker) =>
+            marker.pattern.test(cookie.name)
+          );
+          const matchesNetwork = KNOWN_AFFILIATE_NETWORKS.some((network) =>
+            network.pattern.test(cookie.domain)
+          );
+          return matchesMarker || matchesNetwork;
+        });
+        setAffiliateCookies(filteredAffiliates);
+        setIsLoadingAffiliateCookies(false);
+      });
+    } catch (error) {
+      console.error('Error fetching affiliate cookies:', error);
+      setIsLoadingAffiliateCookies(false);
+    }
   };
 
   const uniqueNetworksCount = new Set(
@@ -110,6 +124,38 @@ export const App = () => {
       fetchAffiliateCookies();
     }
   }, [activeTab]);
+
+  // Watchdog for affiliate cookie loading state
+  useEffect(() => {
+    if (isLoadingAffiliateCookies) {
+      const timeoutId = setTimeout(() => {
+        console.warn(
+          '[COOKIE SLEUTH] Affiliate cookie fetch watchdog triggered.'
+        );
+        setIsLoadingAffiliateCookies(false);
+      }, 7000); // 7-second watchdog
+
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+  }, [isLoadingAffiliateCookies]);
+
+  // Watchdog for general cookie loading state
+  useEffect(() => {
+    if (isLoadingCookies) {
+      const timeoutId = setTimeout(() => {
+        console.warn(
+          '[COOKIE SLEUTH] General cookie fetch watchdog triggered.'
+        );
+        setIsLoadingCookies(false);
+      }, 7000); // 7-second watchdog
+
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+  }, [isLoadingCookies]);
 
   const deleteSingleCookie = (cookie: chrome.cookies.Cookie) => {
     if (typeof chrome === 'undefined' || !chrome.cookies) return;
@@ -163,8 +209,8 @@ export const App = () => {
           </AnimatePresence>
         </div>
 
-        {/* TAB NAVIGATION BUTTONS */}
-        <div className="relative flex bg-zinc-900/90 border border-cyan-500/20 p-1 rounded mb-3 mt-2 text-xs flex-shrink-0">
+        {/* TAB BAR & NAVIGATION BUTTONS */}
+        <div className="relative flex bg-zinc-900/90 border border-cyan-500/20 p-1 rounded mb-2 mt-2 text-xs flex-shrink-0">
           <div
             className={`absolute top-1 bottom-1 transition-all duration-300 rounded bg-cyan-500/20 border border-cyan-400/50 shadow-[0_0_10px_rgba(0,240,255,0.2)] ${
               activeTab === 'threats'

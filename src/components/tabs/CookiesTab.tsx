@@ -58,7 +58,7 @@ const CookiesTab: React.FC<CookiesTabProps> = ({
       </div>
 
       {/* Cookies Live Feed List */}
-      <div className="h-[310px] overflow-y-auto space-y-1.5 pr-1 scrollbar-thin scrollbar-thumb-cyan-500/40">
+      <div className="h-[360px] overflow-y-auto space-y-1.5 pr-1 pb-2 scrollbar-thin scrollbar-thumb-cyan-500/40">
         {filteredCookies.length === 0 ? (
           <div className="h-full flex items-center justify-center text-zinc-600 text-xs tracking-wider">
             NO MATCHING COOKIES

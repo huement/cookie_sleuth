@@ -32,7 +32,7 @@ const AffiliatesTab: React.FC<AffiliatesTabProps> = ({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 15 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="space-y-2 h-full flex flex-col justify-between"
+      className="space-y-1 h-full flex flex-col justify-between"
     >
       {/* Search and Refresh Controls */}
       <div className="flex items-center gap-2">
@@ -61,28 +61,31 @@ const AffiliatesTab: React.FC<AffiliatesTabProps> = ({
 
       {/* Overview Stat Badges */}
       <div className="grid grid-cols-2 gap-3 mb-1">
-        <div className="bg-zinc-900/80 border border-cyan-500/20 p-2.5 rounded shadow-inner">
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
+        <div className="bg-zinc-900/80 border border-cyan-500/20 py-1 px-2 rounded shadow-inner flex items-center">
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest w-1/2">
             Active Affiliates
           </p>
-          <p className="text-xl font-bold text-pink-500 drop-shadow-[0_0_8px_#ff007f]">
+          <p className="text-lg font-bold text-pink-500 drop-shadow-[0_0_8px_#ff007f] w-1/2 text-right">
             {affiliateCookies.length.toString().padStart(4, '0')}
           </p>
         </div>
-        <div className="bg-zinc-900/80 border border-cyan-500/20 p-2.5 rounded shadow-inner">
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">
+        <div className="bg-zinc-900/80 border border-cyan-500/20 py-1 px-2 rounded shadow-inner flex items-center">
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest w-1/2">
             Unique Networks
           </p>
-          <p className="text-xl font-bold text-cyan-300 drop-shadow-[0_0_8px_#00f0ff]">
-            {uniqueNetworksCount.toString().padStart(2, '0')}
+          <p className="text-lg font-bold text-cyan-300 drop-shadow-[0_0_8px_#00f0ff] w-1/2 text-right">
+            {uniqueNetworksCount.toString().padStart(4, '0')}
           </p>
         </div>
       </div>
 
       {/* Cookies Live Feed List */}
-      <div className="h-[230px] overflow-y-auto space-y-1.5 pr-1 scrollbar-thin scrollbar-thumb-cyan-500/40">
+      <div className="h-[310px] overflow-y-auto space-y-1.5 pr-1 pb-2 scrollbar-thin scrollbar-thumb-cyan-500/40">
         {filteredAffiliateCookies.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-zinc-600 text-xs tracking-wider">
+          <div
+            key="no-affiliates"
+            className="h-full flex items-center justify-center text-zinc-600 text-xs tracking-wider"
+          >
             NO ACTIVE AFFILIATE COOKIES
           </div>
         ) : (
